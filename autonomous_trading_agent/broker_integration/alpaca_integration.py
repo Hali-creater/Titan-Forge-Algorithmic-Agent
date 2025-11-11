@@ -67,3 +67,9 @@ class AlpacaIntegration:
             return self.executor.get_open_positions()
         logging.warning('Executor not initialized.')
         return pd.DataFrame()
+
+    def get_current_price(self, symbol: str) -> float:
+        if self.executor:
+            return self.executor.get_current_price(symbol)
+        logging.warning('Executor not initialized.')
+        return 0.0
