@@ -76,3 +76,16 @@ class BaseExecutor(ABC):
             DataFrame if fetching fails or no positions are open.
         """
         pass
+
+    @abstractmethod
+    def get_current_price(self, symbol: str) -> float:
+        """
+        Retrieves the current market price for a given symbol.
+
+        Args:
+            symbol: The trading symbol.
+
+        Returns:
+            The current price as a float, or 0.0 if fetching fails.
+        """
+        pass

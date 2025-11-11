@@ -190,3 +190,22 @@ class AlpacaExecutor(BaseExecutor):
         except Exception as e:
             logging.error(f'Error fetching open positions: {e}')
             return pd.DataFrame()
+
+    def get_current_price(self, symbol: str) -> float:
+        """
+        Retrieves the current market price for a given symbol from Alpaca.
+
+        Args:
+            symbol: The trading symbol.
+
+        Returns:
+            The current price as a float, or 0.0 if fetching fails.
+        """
+        try:
+            latest_trade = self.api.get_latest_trade(symbol)
+            price = float(latest_trade.p)
+            logging.info(f'Fetched current price for {symbol}: {price:.2f}')
+            return price
+        except Exception as e:
+            logging.error(f'Error fetching current price for {symbol}: {e}')
+            return 0.0

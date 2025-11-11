@@ -137,3 +137,11 @@ class InteractiveBrokersIntegration:
             return self.executor.get_open_positions()
         logging.warning('Executor not initialized.')
         return pd.DataFrame()
+
+    def get_current_price(self, symbol: str) -> float:
+        """
+        Retrieves the current market price for a given symbol.
+        NOTE: This is a placeholder and needs to be implemented.
+        """
+        logging.warning(f"get_current_price not implemented for InteractiveBrokersIntegration. Returning 0.0 for {symbol}")
+        return 0.0
