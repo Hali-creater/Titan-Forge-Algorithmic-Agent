@@ -26,31 +26,6 @@ load_css("static/style.css")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- Initialize Database ---
-init_db()
-
-# --- Session State Initialization ---
-if 'agent' not in st.session_state:
-    st.session_state.agent = None
-if 'agent_status' not in st.session_state:
-    st.session_state.agent_status = "Stopped"
-if 'logs' not in st.session_state:
-    st.session_state.logs = []
-if 'positions' not in st.session_state:
-    st.session_state.positions = pd.DataFrame(columns=['Symbol', 'Quantity', 'Side', 'Entry Price', 'Current Price', 'Unrealized P/L', 'Stop Loss', 'Take Profit', 'Entry Time'])
-if 'account_balance' not in st.session_state:
-    st.session_state.account_balance = 10000.0 # Default
-if 'keys_saved' not in st.session_state:
-    st.session_state.keys_saved = False
-
-# --- Helper Functions ---
-def add_log(message):
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state.logs.insert(0, f"[{timestamp}] {message}")
-    # Keep logs from getting too long
-    if len(st.session_state.logs) > 100:
-        st.session_state.logs.pop()
-
 # --- Database Functions ---
 def init_db():
     os.makedirs('database', exist_ok=True)
@@ -80,6 +55,31 @@ def log_trade(symbol, quantity, side, entry_price, exit_price, pnl, entry_time, 
     ''', (symbol, quantity, side, entry_price, exit_price, pnl, entry_time, exit_time))
     conn.commit()
     conn.close()
+
+# --- Initialize Database ---
+init_db()
+
+# --- Session State Initialization ---
+if 'agent' not in st.session_state:
+    st.session_state.agent = None
+if 'agent_status' not in st.session_state:
+    st.session_state.agent_status = "Stopped"
+if 'logs' not in st.session_state:
+    st.session_state.logs = []
+if 'positions' not in st.session_state:
+    st.session_state.positions = pd.DataFrame(columns=['Symbol', 'Quantity', 'Side', 'Entry Price', 'Current Price', 'Unrealized P/L', 'Stop Loss', 'Take Profit', 'Entry Time'])
+if 'account_balance' not in st.session_state:
+    st.session_state.account_balance = 10000.0 # Default
+if 'keys_saved' not in st.session_state:
+    st.session_state.keys_saved = False
+
+# --- Helper Functions ---
+def add_log(message):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    st.session_state.logs.insert(0, f"[{timestamp}] {message}")
+    # Keep logs from getting too long
+    if len(st.session_state.logs) > 100:
+        st.session_state.logs.pop()
 
 # --- Core Agent Logic ---
 class TradingAgent:
