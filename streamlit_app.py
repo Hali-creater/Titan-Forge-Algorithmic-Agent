@@ -13,7 +13,7 @@ from autonomous_trading_agent.broker_integration.oanda_integration import OandaI
 # Import other integrations as they are implemented
 
 # --- App Configuration ---
-st.set_page_config(layout="wide", page_title="Titan Forge Algorithmic Agent - Autonomous Trading Agent")
+st.set_page_config(layout="wide", page_title="AionVanguard - Autonomous Trading Agent")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Session State Initialization ---
@@ -197,19 +197,10 @@ def stop_agent():
     add_log("User requested to stop the agent.")
 
 # --- UI Layout ---
-st.title("🚀 Titan Forge Algorithmic Agent - Trading Agent Dashboard")
+st.title("🚀 AionVanguard - Trading Agent Dashboard")
 
 with st.sidebar:
     st.header("Agent Configuration")
-
-    with st.expander("Supported Languages", expanded=False):
-        st.info("""
-        - **Python**
-        - **SQL**
-        - **CSS**
-        - **Shell**
-        """)
-
     st.selectbox('Select Broker', ('Alpaca', 'Binance', 'Interactive Brokers', 'OANDA'), key='broker_select', on_change=lambda: st.session_state.update(keys_saved=False))
 
     selected_broker = st.session_state.broker_select
