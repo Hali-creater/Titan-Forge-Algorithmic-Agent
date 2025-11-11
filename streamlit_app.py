@@ -15,7 +15,7 @@ from autonomous_trading_agent.broker_integration.oanda_integration import OandaI
 # Import other integrations as they are implemented
 
 # --- App Configuration ---
-st.set_page_config(layout="wide", page_title="Titan Forge Algorithmic Agent - Autonomous Trading Agent")
+st.set_page_config(layout="wide", page_title="Titan Forge Algorithmic Agent")
 
 # --- Load Custom CSS ---
 def load_css(file_name):
@@ -248,7 +248,8 @@ def stop_agent():
     add_log("User requested to stop the agent.")
 
 # --- UI Layout ---
-st.title("🚀 Titan Forge Algorithmic Agent - Trading Agent Dashboard")
+st.title("⚡ Titan Forge Algorithmic Agent")
+st.caption("Supporting Python + SQL + CSS + Shell")
 
 with st.sidebar:
     st.header("Agent Configuration")
@@ -305,32 +306,63 @@ with st.sidebar:
     with col2:
         st.button("⏹️ Stop Agent", on_click=stop_agent, use_container_width=True, disabled=(st.session_state.agent_status != "Running"))
 
-status_color = "red" if st.session_state.agent_status == "Stopped" else "green"
-st.header(f"Status: :{status_color}[{st.session_state.agent_status}]")
+status_color = "green" if st.session_state.agent_status == "Running" else "red"
+st.header(f"Status: :{status_color}[{st.session_state.agent_status.upper()}]")
 
-tab1, tab2, tab3 = st.tabs(["📊 Live Dashboard", "📝 Activity Log", "📈 Trade History"])
 
-with tab1:
-    st.subheader("Account Balance")
-    st.metric("Current Balance", f"${st.session_state.account_balance:,.2f}")
+# --- Main Layout ---
+col1, col2 = st.columns([2, 1])
 
-    st.subheader("Open Positions")
-    st.dataframe(st.session_state.positions, use_container_width=True)
+with col1:
+    # --- Account Equity Curve Card ---
+    with st.container(border=True):
+        st.subheader("📈 Account Equity Curve")
 
-with tab2:
-    st.subheader("Activity Log")
-    st.text_area("Logs", value="\n".join(st.session_state.logs), height=400, key="log_output")
+        initial_balance = st.session_state.initial_balance
 
-with tab3:
-    st.subheader("Trade History")
-    conn = sqlite3.connect('database/trades.db')
-    try:
-        trade_history = pd.read_sql_query("SELECT * FROM trades ORDER BY entry_time DESC", conn)
-        st.dataframe(trade_history, use_container_width=True)
-    except Exception as e:
-        st.error(f"Could not load trade history: {e}")
-    finally:
-        conn.close()
+        # Fetch trade history to calculate equity curve
+        conn = sqlite3.connect('database/trades.db')
+        try:
+            trade_history_df = pd.read_sql_query("SELECT exit_time, pnl FROM trades ORDER BY exit_time ASC", conn)
+            if not trade_history_df.empty:
+                trade_history_df['cumulative_pnl'] = trade_history_df['pnl'].cumsum()
+                trade_history_df['equity'] = initial_balance + trade_history_df['cumulative_pnl']
+                st.line_chart(trade_history_df.set_index('exit_time')['equity'], use_container_width=True)
+            else:
+                st.line_chart(pd.DataFrame({'equity': [initial_balance]}), use_container_width=True)
+        except Exception as e:
+            st.error(f"Could not load trade history for equity curve: {e}")
+        finally:
+            conn.close()
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("Initial Balance", f"${initial_balance:,.2f}")
+        with c2:
+            st.metric("Current Equity", f"${st.session_state.account_balance:,.2f}", f"{(st.session_state.account_balance - initial_balance):.2f}")
+
+    # --- Current Positions Card ---
+    with st.container(border=True):
+        st.subheader("📊 Current Positions")
+        st.dataframe(st.session_state.positions, use_container_width=True)
+
+with col2:
+    # --- Recent Decisions Card ---
+    with st.container(border=True):
+        st.subheader("🧠 Recent Decisions")
+        st.text_area("Activity Log", value="\n".join(st.session_state.logs), height=400, key="log_output")
+
+    # --- Trade History Card ---
+    with st.container(border=True):
+        st.subheader("📜 Trade History")
+        conn = sqlite3.connect('database/trades.db')
+        try:
+            trade_history = pd.read_sql_query("SELECT * FROM trades ORDER BY entry_time DESC", conn)
+            st.dataframe(trade_history, use_container_width=True)
+        except Exception as e:
+            st.error(f"Could not load trade history: {e}")
+        finally:
+            conn.close()
 
 # This is a hack to make the log update more frequently on screen
 if st.session_state.agent_status == "Running":
