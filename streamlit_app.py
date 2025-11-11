@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import time
 import logging
+import sqlite3
+import os
 from datetime import datetime, timedelta
 from autonomous_trading_agent.strategy.trading_strategy import CombinedStrategy
 from autonomous_trading_agent.risk_management.risk_manager import RiskManager
@@ -13,8 +15,19 @@ from autonomous_trading_agent.broker_integration.oanda_integration import OandaI
 # Import other integrations as they are implemented
 
 # --- App Configuration ---
-st.set_page_config(layout="wide", page_title="AionVanguard - Autonomous Trading Agent")
+st.set_page_config(layout="wide", page_title="Titan Forge Algorithmic Agent - Autonomous Trading Agent")
+
+# --- Load Custom CSS ---
+def load_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+load_css("static/style.css")
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- Initialize Database ---
+init_db()
 
 # --- Session State Initialization ---
 if 'agent' not in st.session_state:
@@ -37,6 +50,36 @@ def add_log(message):
     # Keep logs from getting too long
     if len(st.session_state.logs) > 100:
         st.session_state.logs.pop()
+
+# --- Database Functions ---
+def init_db():
+    os.makedirs('database', exist_ok=True)
+    conn = sqlite3.connect('database/trades.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS trades
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+         symbol TEXT,
+         quantity REAL,
+         side TEXT,
+         entry_price REAL,
+         exit_price REAL,
+         pnl REAL,
+         entry_time TIMESTAMP,
+         exit_time TIMESTAMP)
+    ''')
+    conn.commit()
+    conn.close()
+
+def log_trade(symbol, quantity, side, entry_price, exit_price, pnl, entry_time, exit_time):
+    conn = sqlite3.connect('database/trades.db')
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO trades (symbol, quantity, side, entry_price, exit_price, pnl, entry_time, exit_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (symbol, quantity, side, entry_price, exit_price, pnl, entry_time, exit_time))
+    conn.commit()
+    conn.close()
 
 # --- Core Agent Logic ---
 class TradingAgent:
@@ -140,6 +183,14 @@ class TradingAgent:
                         add_log(f"Closing position for {position['Symbol']} due to time-based exit.")
 
                 if positions_to_close:
+                    if hasattr(self.broker, 'get_current_price'):
+                        for index in positions_to_close:
+                            position = st.session_state.positions.loc[index]
+                            exit_price = self.broker.get_current_price(position['Symbol'])
+                            pnl = (exit_price - position['Entry Price']) * position['Quantity'] if position['Side'] == 'BUY' else (position['Entry Price'] - exit_price) * position['Quantity']
+                            log_trade(position['Symbol'], position['Quantity'], position['Side'], position['Entry Price'], exit_price, pnl, position['Entry Time'], datetime.now())
+                    else:
+                        add_log(f"Broker '{self.config['broker']}' does not support real-time price fetching. Trade history will not be logged.")
                     st.session_state.positions = st.session_state.positions.drop(positions_to_close).reset_index(drop=True)
 
 
@@ -197,7 +248,7 @@ def stop_agent():
     add_log("User requested to stop the agent.")
 
 # --- UI Layout ---
-st.title("🚀 AionVanguard - Trading Agent Dashboard")
+st.title("🚀 Titan Forge Algorithmic Agent - Trading Agent Dashboard")
 
 with st.sidebar:
     st.header("Agent Configuration")
@@ -257,7 +308,7 @@ with st.sidebar:
 status_color = "red" if st.session_state.agent_status == "Stopped" else "green"
 st.header(f"Status: :{status_color}[{st.session_state.agent_status}]")
 
-tab1, tab2 = st.tabs(["📊 Live Dashboard", "📝 Activity Log"])
+tab1, tab2, tab3 = st.tabs(["📊 Live Dashboard", "📝 Activity Log", "📈 Trade History"])
 
 with tab1:
     st.subheader("Account Balance")
@@ -269,6 +320,17 @@ with tab1:
 with tab2:
     st.subheader("Activity Log")
     st.text_area("Logs", value="\n".join(st.session_state.logs), height=400, key="log_output")
+
+with tab3:
+    st.subheader("Trade History")
+    conn = sqlite3.connect('database/trades.db')
+    try:
+        trade_history = pd.read_sql_query("SELECT * FROM trades ORDER BY entry_time DESC", conn)
+        st.dataframe(trade_history, use_container_width=True)
+    except Exception as e:
+        st.error(f"Could not load trade history: {e}")
+    finally:
+        conn.close()
 
 # This is a hack to make the log update more frequently on screen
 if st.session_state.agent_status == "Running":
